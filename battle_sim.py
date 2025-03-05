@@ -1,7 +1,5 @@
 from dataclasses import dataclass
 import random
-from enum import Enum
-from copy import deepcopy
 
 @dataclass
 class CombatantStats:
@@ -22,20 +20,12 @@ class CombatantStats:
         return 2 * self.attack / self.dice_size
     def modified_copy(self, extra_attack=0, extra_bonus=0, extra_hp=0) -> "CombatantStats":
         return CombatantStats(self.name, self.attack + extra_attack, self.bonus + extra_bonus, self.max_hp + extra_hp)
-    def __hash__(self) -> int:
-        return hash((self.name, self.attack, self.bonus, self.max_hp))
     def __str__(self) -> str:
         return self.name
     def __mul__(self, other):
         return [self]*other
     def __rmul__(self, other):
         return [self]*other
-    
-class _CombatantWrapper(CombatantStats):
-    def __init__(self, wrapped:CombatantStats) -> None:
-        self.__dict__ = wrapped.__dict__
-        self.__class__ = wrapped.__class__
-
 
 class Army:
     def __init__(self, *forces) -> None:
@@ -45,7 +35,6 @@ class Army:
                 self.forces.extend(force)
             else:
                 self.forces.append(force)
-        self.forces = [ship.modified_copy() for ship in self.forces]
         self.damage_overflow = 0
     def damage(self, damage:float):
             self.damage_overflow += damage
@@ -60,13 +49,12 @@ class Army:
         return sum(ship.average_hits for ship in self.forces)
     def __repr__(self) -> str:
         return str([str(ship) for ship in self.forces])
-def simulate(one:Army, two:Army, roll_dice=True):
-    one = deepcopy(one)
-    two = deepcopy(two)
-    if type(one) != Army:
-        one = Army(one)
-    if type(two) != Army:
-        two = Army(two )
+    def __iter__(self):
+        yield from self.forces
+
+def simulate(one, two, roll_dice=True):
+    one = Army(one)
+    two = Army(two)
     while True:
         if roll_dice:
             one_hits = one.get_hits()
@@ -81,33 +69,32 @@ def simulate(one:Army, two:Army, roll_dice=True):
 
 # outputs percentage of attacker (first army) wins
 SIMS = 1000
-def sim(attacker:Army, defender:Army):
-    attacker_wins = 0
+def sim(attacker, defender):
+    attacker = Army(attacker)
+    defender = Army(defender)
+
+    attacker_survivors = []
+
     for i in range(SIMS):
-        result = simulate(attacker, defender, roll_dice=True)
-        if not result[0].is_destroyed():
-            attacker_wins += 1
-    return attacker_wins/SIMS
-def sim_count(attacker:Army, defender:Army):
-    attacker_survivors = 0
-    defender_survivors = 0
-    for i in range(SIMS):
-        result = simulate(attacker, defender, roll_dice=True)
-        attacker_survivors += result[0].forces.__len__()
-        defender_survivors += result[1].forces.__len__()
-    return attacker_survivors/SIMS, defender_survivors/SIMS
+        attacker_result, _ = simulate(attacker, defender, roll_dice=True)
+        attacker_survivors.append(len(attacker_result.forces))
+
+    attacker_wins = sum(min(n, 1) for n in attacker_survivors)/SIMS
+    casualties = len(attacker.forces) - sum(attacker_survivors)/SIMS
+
+    return attacker_wins, round(casualties, 2)
 
 def standard_frigate_defence(defence:Army|CombatantStats) -> int:
     corvettes = Army()
-    if type(defence) is CombatantStats:
-        defence = Army(defence)
+    defence = Army(defence)
+    
     while True:
         corvettes.forces.append(StandardCombatants.Frigate)
         result = simulate(defence, corvettes, roll_dice=False)
         if result[0].is_destroyed():
             return corvettes.forces.__len__()
 
-class StandardCombatants(_CombatantWrapper, Enum):
+class StandardCombatants:
     Frigate = CombatantStats("Frigate", 1, 0, 1) # Front
     Subspace = CombatantStats("Subspace", 2, 1, 1) # Back
     Destroyer = CombatantStats("Destroyer", 2, 0, 2) # Front
@@ -116,28 +103,4 @@ class StandardCombatants(_CombatantWrapper, Enum):
     Battleship = CombatantStats("Battleship", 6, 2, 5) # Front
     Titan = CombatantStats("Titan", 4, 4, 3) # Back
 
-class OurCombatants(_CombatantWrapper, Enum):
-    Frigate = StandardCombatants.Frigate.modified_copy(1,0,1)
-
-planet_twenty_five = Army(StandardCombatants.Frigate, StandardCombatants.Destroyer, StandardCombatants.Subspace * 2)
-
-planet_fourty_three = Army(StandardCombatants.Frigate * 6)
-
-thirty_two = Army(StandardCombatants.Frigate, StandardCombatants.Battleship, StandardCombatants.BattleCruiser, StandardCombatants.Subspace)
-
-fifty_five = Army( StandardCombatants.BattleCruiser, StandardCombatants.Destroyer,StandardCombatants.Frigate)
-thirty_nine = Army(StandardCombatants.Cruiser*2, StandardCombatants.Destroyer, StandardCombatants.Subspace)
-
-print(standard_frigate_defence(Army(StandardCombatants.Cruiser, StandardCombatants.Frigate)))
-
-print(standard_frigate_defence(thirty_nine))
-
-print(sim(Army(OurCombatants.Frigate*28), Army(StandardCombatants.Titan*4)))
-
-your_army = Army(StandardCombatants.Frigate.modified_copy(2,1,1)*37)
-their_army = Army(StandardCombatants.Frigate.modified_copy(2,1,1) * 25, CombatantStats("Station Two", 3, 0, 5), 3 * StandardCombatants.Subspace.modified_copy(2,0,0))
-print(sim(your_army, their_army))
-
-chris_cruiser = StandardCombatants.Cruiser.modified_copy(1,0,1)
-print(simulate(Army(OurCombatants.Frigate*25), Army(chris_cruiser*3, OurCombatants.Frigate*2)))
-
+print(sim(StandardCombatants.Frigate*200, StandardCombatants.Titan*25))

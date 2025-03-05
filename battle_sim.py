@@ -12,16 +12,14 @@ class CombatantStats:
     def __post_init__(self):
         self.dice_size =[12,10,8,6,4,3,2,1][min(7,self.bonus)]
         self.average_hits = self._average_hits()
-    # def combat_ratio(self): # defunct smart targetting
-    #     return (self.attack + self.bonus/2)/(self.max_hp-self._damage_taken)
     def roll_hits(self) -> int:
         hits = 0
         for _ in range(self.attack):
-            if random.randint(1, self.dice_size) <= 1:
+            if random.randint(1, self.dice_size) <= 2:
                 hits += 1
         return hits
     def _average_hits(self) -> float:
-        return self.attack / self.dice_size
+        return 2 * self.attack / self.dice_size
     def modified_copy(self, extra_attack=0, extra_bonus=0, extra_hp=0) -> "CombatantStats":
         return CombatantStats(self.name, self.attack + extra_attack, self.bonus + extra_bonus, self.max_hp + extra_hp)
     def __hash__(self) -> int:
@@ -54,28 +52,6 @@ class Army:
             while len(self.forces) > 0 and self.damage_overflow >= self.forces[0].max_hp:
                 self.damage_overflow -= self.forces[0].max_hp
                 self.forces.pop(0)
-        # else: # defunct smart targetting:
-        #     damage_overflow = damage
-        #     target_indices:list[int] = [i for i in range(len(self.forces))]
-        #     target_indices.sort(key=lambda i: self.forces[i].combat_ratio(), reverse=False)
-        #     to_remove = []
-        #     for i in target_indices:
-        #         target = self.forces[i]
-        #         if target.max_hp - target._damage_taken <= damage_overflow:
-        #             to_remove.append(i)
-        #             damage_overflow -= (target.max_hp - target._damage_taken)
-        #             target._damage_taken += (target.max_hp - target._damage_taken)
-        #     if damage_overflow > 0:
-        #         for i in target_indices:
-        #             target = self.forces[i]
-        #             if target.max_hp > target._damage_taken:
-        #                 target._damage_taken += damage_overflow
-        #                 break
-        #     to_remove.sort()
-        #     to_remove = [to_remove[i]-i for i in range(len(to_remove))]
-            # for i in to_remove:
-            #     self.forces.pop(i)
-                    
     def is_destroyed(self) -> bool:
         return self.forces.__len__() == 0
     def get_hits(self) -> int:
@@ -121,7 +97,7 @@ def sim_count(attacker:Army, defender:Army):
         defender_survivors += result[1].forces.__len__()
     return attacker_survivors/SIMS, defender_survivors/SIMS
 
-def standard_corvette_defence(defence:Army|CombatantStats) -> int:
+def standard_frigate_defence(defence:Army|CombatantStats) -> int:
     corvettes = Army()
     if type(defence) is CombatantStats:
         defence = Army(defence)
@@ -132,36 +108,36 @@ def standard_corvette_defence(defence:Army|CombatantStats) -> int:
             return corvettes.forces.__len__()
 
 class StandardCombatants(_CombatantWrapper, Enum):
-    Corvette = CombatantStats("Corvette", 1,0,1)
-    Frigate = CombatantStats("Frigate", 1, 3, 1)
-    Destroyer = CombatantStats("Destroyer", 3, 0, 2)
-    Cruiser = CombatantStats("Cruiser", 3, 3, 3)
-    Battleship = CombatantStats("Battleship", 4, 2, 7)
-    Titan = CombatantStats("Titan", 6, 5, 4)
-    Planet = CombatantStats("Planet", 1, 2, 5)
+    Frigate = CombatantStats("Frigate", 1, 0, 1) # Front
+    Subspace = CombatantStats("Subspace", 2, 1, 1) # Back
+    Destroyer = CombatantStats("Destroyer", 2, 0, 2) # Front
+    Cruiser = CombatantStats("Cruiser", 5, 1, 3) # Front
+    BattleCruiser = CombatantStats("BattleCruiser", 3, 3, 2) # Back
+    Battleship = CombatantStats("Battleship", 6, 2, 5) # Front
+    Titan = CombatantStats("Titan", 4, 4, 3) # Back
 
-    StationOne = CombatantStats("Station 1", 1,1,2)
-    StationTwo = CombatantStats("Station 2", 2,2,4)
-    StationThree = CombatantStats("Station 3", 5,3,8)
-    StationFour = CombatantStats("Station 4", 8,4,16)
-    StationFive = CombatantStats("Station 5", 13,6,25)
 class OurCombatants(_CombatantWrapper, Enum):
-    Corvette = StandardCombatants.Corvette.modified_copy(2,1,1)
-    Destroyer = StandardCombatants.Destroyer.modified_copy(1,1,0)
-    Cruiser = StandardCombatants.Cruiser.modified_copy(0,1,1)
-    Battleship = StandardCombatants.Battleship.modified_copy(0,2,2)
-    Titan = StandardCombatants.Titan.modified_copy(1)
-    
-    LevelOneStation = StandardCombatants.StationOne.modified_copy()
-    LevelTwoStation = StandardCombatants.StationTwo.modified_copy()   
+    Frigate = StandardCombatants.Frigate.modified_copy(1,0,1)
 
-alloy = Army(StandardCombatants.Frigate*2, StandardCombatants.Destroyer*3)
+planet_twenty_five = Army(StandardCombatants.Frigate, StandardCombatants.Destroyer, StandardCombatants.Subspace * 2)
 
-alloy_2 = Army(StandardCombatants.Frigate*3, StandardCombatants.Corvette*10)
+planet_fourty_three = Army(StandardCombatants.Frigate * 6)
 
-unity = Army(StandardCombatants.Frigate, StandardCombatants.Cruiser, StandardCombatants.Corvette * 5)
+thirty_two = Army(StandardCombatants.Frigate, StandardCombatants.Battleship, StandardCombatants.BattleCruiser, StandardCombatants.Subspace)
 
-green_research = Army(StandardCombatants.Destroyer*4)
+fifty_five = Army( StandardCombatants.BattleCruiser, StandardCombatants.Destroyer,StandardCombatants.Frigate)
+thirty_nine = Army(StandardCombatants.Cruiser*2, StandardCombatants.Destroyer, StandardCombatants.Subspace)
 
-planet_thirteen = Army(StandardCombatants.Titan, StandardCombatants.Destroyer * 2, StandardCombatants.Corvette * 2, StandardCombatants.Cruiser)
-robot_planet = Army(StandardCombatants.Titan, StandardCombatants.Battleship*2, StandardCombatants.Cruiser*3, StandardCombatants.Destroyer*2, StandardCombatants.Frigate*2, StandardCombatants.Corvette)
+print(standard_frigate_defence(Army(StandardCombatants.Cruiser, StandardCombatants.Frigate)))
+
+print(standard_frigate_defence(thirty_nine))
+
+print(sim(Army(OurCombatants.Frigate*28), Army(StandardCombatants.Titan*4)))
+
+your_army = Army(StandardCombatants.Frigate.modified_copy(2,1,1)*37)
+their_army = Army(StandardCombatants.Frigate.modified_copy(2,1,1) * 25, CombatantStats("Station Two", 3, 0, 5), 3 * StandardCombatants.Subspace.modified_copy(2,0,0))
+print(sim(your_army, their_army))
+
+chris_cruiser = StandardCombatants.Cruiser.modified_copy(1,0,1)
+print(simulate(Army(OurCombatants.Frigate*25), Army(chris_cruiser*3, OurCombatants.Frigate*2)))
+

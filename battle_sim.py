@@ -20,8 +20,8 @@ class CombatantStats:
         return hits
     def _average_hits(self) -> float:
         return 2 * self.attack / self.dice_size
-    def modified_copy(self, extra_attack=0, extra_bonus=0, extra_hp=0) -> "CombatantStats":
-        return CombatantStats(name = self.name, attack = self.attack + extra_attack, bonus = self.bonus + extra_bonus, max_hp= self.max_hp + extra_hp, cost = self.cost, size = self.size)
+    def modified_copy(self, extra_attack=0, extra_hp=0) -> "CombatantStats":
+        return CombatantStats(name = self.name, attack = self.attack + extra_attack, bonus = self.bonus, max_hp= self.max_hp + extra_hp, cost = self.cost, size = self.size)
     def __str__(self) -> str:
         return self.name
     def __mul__(self, other):
@@ -105,8 +105,8 @@ class Dice:
 
 class StandardCombatants:
     Corvette = CombatantStats("Corvette", Dice.d12, 1, 1, 2, 0.5) # Front
-    Frigate = CombatantStats("Frigate", Dice.d8, 3, 1, 4, 1) # Back
     Destroyer = CombatantStats("Destroyer", Dice.d12, 3, 2, 4, 1) # Front
+    Frigate = CombatantStats("Frigate", Dice.d8, 3, 1, 4, 1) # Back
     Cruiser = CombatantStats("Cruiser", Dice.d10, 7, 5, 8, 2) # Front
     BattleCruiser = CombatantStats("BattleCruiser", Dice.d6, 6, 2, 8, 2) # Back
     Battleship = CombatantStats("Battleship", Dice.d8, 9, 9, 12, 3) # Front
@@ -119,18 +119,15 @@ class DefenceStation:
     LevelFive = CombatantStats("Defence Station Tier 5", Dice.d6, 13, 13, 15, 5)
     LevelSix = CombatantStats("Defence Station Tier 6", Dice.d6, 16, 16, 21, 6)
     LevelSeven = CombatantStats("Defence Station Tier 7", Dice.d4, 20, 20, 28, 7)
-class MyCombtantas:
-    Corvette = StandardCombatants.Corvette.modified_copy(2,0,0)
-    Frigate = StandardCombatants.Frigate.modified_copy(1,0,1)
-    Cruiser = StandardCombatants.Cruiser.modified_copy(1,0,2)
 
-planet_twelve = Army(StandardCombatants.Battleship, StandardCombatants.Destroyer, StandardCombatants.Frigate)
-planet_seven = Army(StandardCombatants.Cruiser * 2, StandardCombatants.Frigate)
-planet_tewnty_nine = Army(StandardCombatants.Corvette*3, StandardCombatants.BattleCruiser*3)
-planet_thirty = Army(StandardCombatants.Destroyer*4, StandardCombatants.Corvette, StandardCombatants.Titan*2)
+class UpgradedCombatants:
+    Destroyer = StandardCombatants.Destroyer.modified_copy(1,1)
+    Frigate = StandardCombatants.Frigate.modified_copy(1,1)
+    Cruiser = StandardCombatants.Cruiser.modified_copy(1,1)
+    BattleCruiser = StandardCombatants.BattleCruiser.modified_copy(1,1)
 
-planet_thirty_one = Army(StandardCombatants.Cruiser, StandardCombatants.Destroyer, StandardCombatants.Corvette * 2, StandardCombatants.Battleship, StandardCombatants.Titan, StandardCombatants.BattleCruiser, StandardCombatants.Frigate * 3)
+print(sim(Army(UpgradedCombatants.Cruiser* 3, UpgradedCombatants.Frigate * 2), Army(UpgradedCombatants.Cruiser *3, UpgradedCombatants.BattleCruiser)))
 
-# print(sim(Army(MyCombtantas.Cruiser*7, MyCombtantas.Frigate*6), Army(StandardCombatants.Battleship * 2, StandardCombatants.Destroyer, DefenceStation.LevelFour, StandardCombatants.Titan * 3)))
+print(sim(Army(UpgradedCombatants.Destroyer* 2), Army(UpgradedCombatants.Cruiser)))
 
-print(sim(Army(MyCombtantas.Cruiser*2, StandardCombatants.Frigate*2), Army(DefenceStation.LevelFour, StandardCombatants.Titan)))
+print(sim(Army(UpgradedCombatants.Destroyer*2, UpgradedCombatants.Cruiser, StandardCombatants.Titan), Army(UpgradedCombatants.Cruiser * 2, StandardCombatants.Titan)))
